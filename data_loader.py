@@ -7,7 +7,8 @@ import sys
 
 import torch
 
-from pytorch_pretrained_bert import BertTokenizer
+#from pytorch_pretrained_bert import BertTokenizer
+from transformers import BertTokenizer
 
 import utils
 
@@ -38,18 +39,18 @@ class DataLoader(object):
         return tags
 
     def load_sentences_tags(self, sentences_file, tags_file, d):
-        """Loads sentences and tags from their corresponding files. 
+        """Loads sentences and tags from their corresponding files.
             Maps tokens and tags to their indices and stores them in the provided dict d.
         """
         sentences = []
         tags = []
 
-        with open(sentences_file, 'r') as file:
+        with open(sentences_file, 'r',encoding='utf-8') as file:
             for line in file:
                 # replace each token by its index
                 tokens = line.split()
                 sentences.append(self.tokenizer.convert_tokens_to_ids(tokens))
-        
+
         with open(tags_file, 'r') as file:
             for line in file:
                 # replace each tag by its index
@@ -76,7 +77,7 @@ class DataLoader(object):
             data: (dict) contains the data with tags for each type in types.
         """
         data = {}
-        
+
         if data_type in ['train', 'val', 'test']:
             sentences_file = os.path.join(self.data_dir, data_type, 'sentences.txt')
             tags_path = os.path.join(self.data_dir, data_type, 'tags.txt')
@@ -91,7 +92,7 @@ class DataLoader(object):
         Args:
             data: (dict) contains data which has keys 'data', 'tags' and 'size'
             shuffle: (bool) whether the data should be shuffled
-            
+
         Yields:
             batch_data: (tensor) shape: (batch_size, max_len)
             batch_tags: (tensor) shape: (batch_size, max_len)
@@ -136,6 +137,5 @@ class DataLoader(object):
 
             # shift tensors to GPU if available
             batch_data, batch_tags = batch_data.to(self.device), batch_tags.to(self.device)
-    
-            yield batch_data, batch_tags
 
+            yield batch_data, batch_tags
