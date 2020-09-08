@@ -145,8 +145,8 @@ def f1_score(y_true, y_pred, average='micro', digits=2, suffix=False):
     nb_pred = len(pred_entities)
     nb_true = len(true_entities)
 
-    p = 100 * nb_correct / nb_pred if nb_pred > 0 else 0
-    r = 100 * nb_correct / nb_true if nb_true > 0 else 0
+    p = nb_correct / nb_pred if nb_pred > 0 else 0
+    r = nb_correct / nb_true if nb_true > 0 else 0
     score = 2 * p * r / (p + r) if p + r > 0 else 0
 
     return score
@@ -238,8 +238,8 @@ def classification_report(y_true, y_pred, digits=2, suffix=False):
         nb_pred = len(pred_entities)
         nb_true = len(true_entities)
 
-        p = 100 * nb_correct / nb_pred if nb_pred > 0 else 0
-        r = 100 * nb_correct / nb_true if nb_true > 0 else 0
+        p = nb_correct / nb_pred if nb_pred > 0 else 0
+        r = nb_correct / nb_true if nb_true > 0 else 0
         f1 = 2 * p * r / (p + r) if p + r > 0 else 0
 
         report += row_fmt.format(*[type_name, p, r, f1, nb_true], width=width, digits=digits)
