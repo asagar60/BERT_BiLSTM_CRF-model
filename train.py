@@ -11,7 +11,8 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import trange
 
-from pytorch_pretrained_bert import BertForTokenClassification
+#from pytorch_pretrained_bert import BertForTokenClassification
+from transformers import BertForTokenClassification
 
 from data_loader import DataLoader
 from evaluate import evaluate
@@ -37,11 +38,10 @@ def train(model, data_iterator, optimizer, scheduler, params):
     """Train the model on `steps` batches"""
     # set model to training mode
     model.train()
-    scheduler.step()
 
     # a running average object for loss
     loss_avg = utils.RunningAverage()
-    
+
     # Use tqdm for progress bar
     t = trange(params.train_steps)
     for i in t:
@@ -50,8 +50,9 @@ def train(model, data_iterator, optimizer, scheduler, params):
         batch_masks = batch_data.gt(0)
 
         # compute model output and loss
-        loss = model(batch_data, token_type_ids=None, attention_mask=batch_masks, labels=batch_tags)
+        loss= model(batch_data, token_type_ids=None, attention_mask=batch_masks, labels=batch_tags)
 
+        loss = loss[0]
         if params.n_gpu > 1 and args.multi_gpu:
             loss = loss.mean()  # mean() to average on multi-gpu
 
@@ -71,7 +72,8 @@ def train(model, data_iterator, optimizer, scheduler, params):
         # update the average loss
         loss_avg.update(loss.item())
         t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
-    
+    scheduler.step()
+
 
 def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params, model_dir, restore_file=None):
     """Train the model and evaluate every epoch."""
@@ -80,7 +82,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params
         restore_path = os.path.join(args.model_dir, args.restore_file + '.pth.tar')
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, model, optimizer)
-        
+
     best_val_f1 = 0.0
     patience_counter = 0
 
@@ -106,7 +108,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params
         train_metrics = evaluate(model, train_data_iterator, params, mark='Train')
         params.eval_steps = params.val_steps
         val_metrics = evaluate(model, val_data_iterator, params, mark='Val')
-        
+
         val_f1 = val_metrics['f1']
         improve_f1 = val_f1 - best_val_f1
 
@@ -132,7 +134,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params
         if (patience_counter >= params.patience_num and epoch > params.min_epoch_num) or epoch == params.epoch_num:
             logging.info("Best val f1: {:05.2f}".format(best_val_f1))
             break
-        
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -142,6 +144,9 @@ if __name__ == '__main__':
     assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
     params = utils.Params(json_path)
 
+    #data_dir = 'data/task1/'
+    #bert_model_dir = 'model/'
+    #model_dir = 'experiments/base_model'
     # Use GPUs if available
     params.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     params.n_gpu = torch.cuda.device_count()
@@ -153,17 +158,17 @@ if __name__ == '__main__':
     if params.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)  # set random seed for all GPUs
     params.seed = args.seed
-    
+
     # Set the logger
     utils.set_logger(os.path.join(args.model_dir, 'train.log'))
     logging.info("device: {}, n_gpu: {}, 16-bits training: {}".format(params.device, params.n_gpu, args.fp16))
 
     # Create the input data pipeline
     logging.info("Loading the datasets...")
-    
+
     # Initialize the DataLoader
     data_loader = DataLoader(args.data_dir, args.bert_model_dir, params, token_pad_idx=0)
-    
+
     # Load training data and test data
     train_data = data_loader.load_data('train')
     val_data = data_loader.load_data('val')
@@ -187,13 +192,13 @@ if __name__ == '__main__':
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
         # no_decay = ['bias', 'gamma', 'beta']
         optimizer_grouped_parameters = [
-            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 
+            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
              'weight_decay_rate': 0.01},
-            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 
+            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
              'weight_decay_rate': 0.0}
         ]
     else:
-        param_optimizer = list(model.classifier.named_parameters()) 
+        param_optimizer = list(model.classifier.named_parameters())
         optimizer_grouped_parameters = [{'params': [p for n, p in param_optimizer]}]
     if args.fp16:
         try:
@@ -217,4 +222,3 @@ if __name__ == '__main__':
     # Train and evaluate the model
     logging.info("Starting training for {} epoch(s)".format(params.epoch_num))
     train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params, args.model_dir, args.restore_file)
-
