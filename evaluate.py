@@ -8,8 +8,8 @@ import os
 import numpy as np
 import torch
 
-from pytorch_pretrained_bert import BertForTokenClassification, BertConfig
-
+#from pytorch_pretrained_bert import BertForTokenClassification, BertConfig
+from transformers import BertForTokenClassification, BertConfig
 from metrics import f1_score
 from metrics import classification_report
 
@@ -26,7 +26,7 @@ parser.add_argument('--multi_gpu', default=False, action='store_true', help="Whe
 parser.add_argument('--fp16', default=False, action='store_true', help="Whether to use 16-bit float precision instead of 32-bit")
 
 
-def evaluate(model, data_iterator, params, mark='Eval', verbose=False):
+def evaluate(model, data_iterator, params, mark='Test', verbose=False):
     """Evaluate the model on `steps` batches."""
     # set model to evaluation mode
     model.eval()
@@ -45,12 +45,15 @@ def evaluate(model, data_iterator, params, mark='Eval', verbose=False):
         batch_masks = batch_data.gt(0)
 
         loss = model(batch_data, token_type_ids=None, attention_mask=batch_masks, labels=batch_tags)
+        batch_output = model(batch_data, token_type_ids=None, attention_mask=batch_masks)  # shape: (batch_size, max_len, num_labels)
+
+        loss = loss[0]
+        batch_output = batch_output[0]
+        
         if params.n_gpu > 1 and params.multi_gpu:
             loss = loss.mean()
         loss_avg.update(loss.item())
-        
-        batch_output = model(batch_data, token_type_ids=None, attention_mask=batch_masks)  # shape: (batch_size, max_len, num_labels)
-        
+
         batch_output = batch_output.detach().cpu().numpy()
         batch_tags = batch_tags.to('cpu').numpy()
 
@@ -112,9 +115,12 @@ if __name__ == '__main__':
     logging.info("- done.")
 
     # Define the model
-    config_path = os.path.join(args.bert_model_dir, 'bert_config.json')
+    config_path = os.path.join(args.bert_model_dir, 'config.json')
     config = BertConfig.from_json_file(config_path)
-    model = BertForTokenClassification(config, num_labels=len(params.tag2idx))
+    #update config with num_labels
+    config.update({"num_labels":len(params.tag2idx)})
+    model = BertForTokenClassification(config)
+    #model = BertForTokenClassification(config, num_labels=2)
 
     model.to(params.device)
     # Reload weights from the saved file
@@ -126,4 +132,3 @@ if __name__ == '__main__':
 
     logging.info("Starting evaluation...")
     test_metrics = evaluate(model, test_data_iterator, params, mark='Test', verbose=True)
-
