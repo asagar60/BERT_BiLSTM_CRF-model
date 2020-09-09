@@ -89,8 +89,8 @@ def predict(model, data_iterator, params, sentences_file):
                 output.extend(out)
     #print(output)
     with open('output.txt', 'w') as f:
-        for out in output:
-            f.write("%s\n" % out)
+        f.write("%s " % output)
+
         print('output flused to disk')
     print('Done')
 
