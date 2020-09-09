@@ -65,7 +65,7 @@ def predict(model, data_iterator, params, sentences_file):
     model.eval()
     pred_words = []
     pred_pos = []
-
+    print('Starting Evaluation')
     for _ in range(params.eval_steps):
         # fetch the next evaluation batch
         batch_data= next(data_iterator)
@@ -87,11 +87,12 @@ def predict(model, data_iterator, params, sentences_file):
             out = [line[i] for i in range(len(line)) if p[i]>0]
             if out:
                 output.extend(out)
-    print(output)
+    #print(output)
     with open('output.txt', 'w') as f:
         for out in output:
             f.write("%s\n" % out)
         print('output flused to disk')
+    print('Done')
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -113,18 +114,11 @@ if __name__ == '__main__':
         torch.cuda.manual_seed_all(args.seed)  # set random seed for all GPUs
     params.seed = args.seed
 
-    # Set the logger
-    utils.set_logger(os.path.join(args.model_dir, 'test.log'))
-
     test_sentences = load_test_sentences(args.bert_model_dir,args.test_file)
-    # Create the input data pipeline
-    logging.info("Loading Sentence file...")
 
     # Specify the test set size
     params.test_size = len(test_sentences)
     params.eval_steps = params.test_size // params.batch_size
-
-    logging.info("- done.")
 
     # Define the model
     config_path = os.path.join(args.bert_model_dir, 'config.json')
@@ -142,6 +136,5 @@ if __name__ == '__main__':
         model.half()
     if params.n_gpu > 1 and args.multi_gpu:
         model = torch.nn.DataParallel(model)
-
-    logging.info("Starting evaluation...")
+        
     predict(model = model, data_iterator = yield_data_batch(test_sentences ,params), params = params, sentences_file=args.test_file)
