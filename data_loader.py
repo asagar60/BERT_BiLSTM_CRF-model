@@ -21,9 +21,12 @@ class DataLoader(object):
         self.seed = params.seed
         self.token_pad_idx = 0
 
-        tags = self.load_tags()
-        self.tag2idx = {tag: idx for idx, tag in enumerate(tags)}
-        self.idx2tag = {idx: tag for idx, tag in enumerate(tags)}
+        #tags = self.load_tags()
+        VOCAB = ('<PAD>', '[CLS]', '[SEP]', 'O', 'I')
+        self.tag2idx = {tag: idx for idx, tag in enumerate(VOCAB)}
+        self.idx2tag = {idx: tag for idx, tag in enumerate(VOCAB)}
+        #self.tag2idx = {tag: idx for idx, tag in enumerate(tags)}
+        #self.idx2tag = {idx: tag for idx, tag in enumerate(tags)}
         params.tag2idx = self.tag2idx
         params.idx2tag = self.idx2tag
         self.tag_pad_idx = self.tag2idx['O']
