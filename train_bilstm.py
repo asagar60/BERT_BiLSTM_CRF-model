@@ -31,8 +31,8 @@ parser.add_argument('--loss_scale', type=float, default=0,
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
 parser.add_argument("--batch_size", type=int, default=4)
-parser.add_argument("--lr", type=float, default=3e-5)
-parser.add_argument("--n_epochs", type=int, default=30)
+parser.add_argument("--lr", type=float, default=5e-3)
+parser.add_argument("--n_epochs", type=int, default=20)
 parser.add_argument("--finetuning", dest="finetuning", action="store_true")
 parser.add_argument("--top_rnns", dest="top_rnns", action="store_true")
 
@@ -129,6 +129,7 @@ def train_and_evaluate(model, train_data, val_data, optimizer, scheduler, params
         # Early stopping and logging best f1
         if (patience_counter >= params.patience_num and epoch > params.min_epoch_num) or epoch == params.epoch_num:
             logging.info("Best val f1: {:05.2f}".format(best_val_f1))
+            print('stopping')
             break
 
 
@@ -144,7 +145,7 @@ if __name__ == '__main__':
     params.batch_size = args.batch_size
     params.learning_rate = args.lr
     params.epoch_num = args.n_epochs
-    #params.full_finetuning = False
+    params.full_finetuning = False
 
     # Use GPUs if available
     params.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -181,13 +182,6 @@ if __name__ == '__main__':
     # Specify the training and validation dataset sizes
     params.train_size = train_data['size']
     params.val_size = val_data['size']
-    
-
-
-    optimizer = Adam(model.parameters(), lr = args.lr)
-    print('Optimizer Done')
-    criterion = nn.CrossEntropyLoss(ignore_index=0) 
-    print('Loss Func Done')
 
     #############################
 
@@ -211,9 +205,12 @@ if __name__ == '__main__':
         ]
     else:
         p_1 = [p for n, p in list(model.lstm.named_parameters())]
-        p_2 = [p for n, p in list(model.fc.named_parameters())]
+        p_2 = [p for n, p in list(model.fc_1.named_parameters())]
+        #p_3 = [p for n, p in list(model.fc_2.named_parameters())]
         #param_optimizer = p_1.extend(p_2)
-        optimizer_grouped_parameters = [{'params': p_1.extend(p_2)}]
+        optimizer_grouped_parameters = [{'params': p_1},
+                                        {'params' :p_2}]
+                                        #{'params' :p_3}]
     if args.fp16:
         try:
             from apex.optimizers import FP16_Optimizer
@@ -231,6 +228,7 @@ if __name__ == '__main__':
             optimizer = FP16_Optimizer(optimizer, static_loss_scale=args.loss_scale)
     else:
         optimizer = Adam(optimizer_grouped_parameters, lr=params.learning_rate)
+        print('Optimizer Done')
         #optimizer = Adam(model.parameters(), lr=args.lr)
         scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(1 + 0.05*epoch))
 
