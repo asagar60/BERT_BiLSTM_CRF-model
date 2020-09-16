@@ -9,7 +9,8 @@ import numpy as np
 import torch
 
 #from pytorch_pretrained_bert import BertForTokenClassification, BertConfig
-from transformers import BertForTokenClassification, BertConfig
+from transformers import BertConfig
+from crf import Bert_BiLSTM_CRF
 from metrics import f1_score
 from metrics import classification_report
 
@@ -107,9 +108,20 @@ if __name__ == '__main__':
 
     # Initialize the DataLoader
     data_loader = DataLoader(args.data_dir, args.bert_model_dir, params, token_pad_idx=0)
+    
+    ########################
 
     # Load data
     test_data = data_loader.load_data('test')
+    print('Load Data Done')
+
+    model = Bert_BiLSTM_CRF(params.tag2idx, bert_dir = args.bert_model_dir).cuda()
+    print('Initial model Done')
+
+    # Load data
+    test_data = data_loader.load_data('test')
+
+    #######################################################################
 
     # Specify the test set size
     params.test_size = test_data['size']
@@ -117,15 +129,6 @@ if __name__ == '__main__':
     test_data_iterator = data_loader.data_iterator(test_data, shuffle=False)
 
     logging.info("- done.")
-
-    # Define the model
-    config_path = os.path.join(args.bert_model_dir, 'config.json')
-    config = BertConfig.from_json_file(config_path)
-    #update config with num_labels
-    config.update({"num_labels":len(params.tag2idx)})
-    model = BertForTokenClassification(config)
-    #model = BertForTokenClassification(config, num_labels=2)
-
     model.to(params.device)
     # Reload weights from the saved file
     utils.load_checkpoint(os.path.join(args.model_dir, args.restore_file + '.pth.tar'), model)
