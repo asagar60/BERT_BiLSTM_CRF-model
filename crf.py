@@ -30,14 +30,16 @@ class Bert_BiLSTM_CRF(nn.Module):
 
 
         # Bert Base - 768 hidden units
-        self.lstm = nn.LSTM(bidirectional=True, num_layers=2, input_size=768, hidden_size=hidden_dim//2, batch_first=True)
+        self.lstm = nn.LSTM(bidirectional=True, num_layers=2, input_size=768, hidden_size=hidden_dim//2, batch_first=True, dropout = 0.5)
         self.transitions = nn.Parameter(torch.randn(
             self.tagset_size, self.tagset_size
         ))
         self.hidden_dim = hidden_dim
         self.start_label_id = self.tag_to_ix['[CLS]']
         self.end_label_id = self.tag_to_ix['[SEP]']
-        self.fc = nn.Linear(hidden_dim, self.tagset_size)
+        #self.dropout = nn.Dropout(p = 0.25)
+        self.fc_1 = nn.Linear(hidden_dim, self.tagset_size)
+        #self.fc_2 = nn.Linear(self.tagset_size,self.tagset_size)
         self.bert = BertModel.from_pretrained(bert_dir)
         # self.bert.eval()  # 知用来取bert embedding
         
@@ -103,9 +105,9 @@ class Bert_BiLSTM_CRF(nn.Module):
             encoded_layer, _  = self.bert(x)
             enc = encoded_layer
         """
-        
-        encoded_layer, _  = self.bert(x)
-        enc = encoded_layer
+        with torch.no_grad():
+          encoded_layer, _  = self.bert(x)
+          enc = encoded_layer
 
         return enc
 
@@ -159,8 +161,10 @@ class Bert_BiLSTM_CRF(nn.Module):
         embeds = self._bert_enc(sentence)  # [8, 75, 768]
         # 过lstm
         enc, _ = self.lstm(embeds)
-        lstm_feats = self.fc(enc)
-        return lstm_feats  # [8, 75, 16]
+        #lstm_feats = self.fc(self.dropout(enc))
+        lstm_feats_1 = self.fc_1(enc)
+        #lstm_feats = self.fc_2(self.dropout(lstm_feats_1))
+        return lstm_feats_1  # [8, 75, 16]
 
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
