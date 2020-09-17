@@ -1,4 +1,4 @@
-# Keyphrase Extraction using BERT + BiLSTM + CRF (Semeval 2017, Task 1)
+# Keyphrase Extraction using BERT + BiLSTM + CRF (Semeval 2017)
 
 Deep Keyphrase extraction using BERT + BiLSTM + CRF .
 
