@@ -100,15 +100,10 @@ class Bert_BiLSTM_CRF(nn.Module):
         x: [batchsize, sent_len]
         enc: [batch_size, sent_len, 768]
         """
-        """
         with torch.no_grad():
-            encoded_layer, _  = self.bert(x)
-            enc = encoded_layer
-        """
-        with torch.no_grad():
-          encoded_layer, _  = self.bert(x)
-          enc = encoded_layer
-
+          encoded_layer = self.bert(x)
+          enc = encoded_layer[0]
+            
         return enc
 
     def _viterbi_decode(self, feats):
